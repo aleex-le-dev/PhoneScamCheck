@@ -2,6 +2,19 @@
 
 > **Site à la Have I Been Pwned" pour vérifier si un numéro de téléphone est signalé comme spam/arnaque**
 
+## 🖼️ **Captures d'Écran du Projet**
+
+### 📱 **Interface Principale - Vérification de Numéros**
+![Interface principale PhoneScamCheck](public/1.png)
+*Vérification d'un numéro de téléphone avec résultats détaillés et niveau de risque*
+
+### 📊 **Statistiques en Temps Réel**
+![Statistiques PhoneScamCheck](public/2.png)
+*Tableau de bord avec statistiques communautaires et top catégories d'arnaque*
+
+### 🧪 **Test du Service TrueCaller**
+![Test TrueCaller PhoneScamCheck](public/3.png)
+*Composant de test du service TrueCaller avec analyse de réputation*
 
 ## 🚀 **Concept**
 
@@ -47,8 +60,6 @@ PhoneScamCheck est un site web qui permet aux utilisateurs de vérifier si un nu
 - **Architecture** : Services modulaires + composants React
 - **Environnement** : Variables d'environnement Vite
 
-
-
 ## 🚀 **Installation et Démarrage**
 
 ### **Prérequis**
@@ -71,7 +82,6 @@ cp .env.example .env
 # Éditer .env avec tes vraies clés
 ```
 
-
 ### **Démarrage**
 ```bash
 # Mode développement
@@ -79,7 +89,3 @@ npm run dev
 
 # Ouvrir http://localhost:5173
 ```
-
-
-
-
