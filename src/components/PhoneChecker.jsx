@@ -89,6 +89,8 @@ const PhoneChecker = () => {
         return <FaExclamationTriangle className="text-orange-500 text-4xl" />;
       case 'safe':
         return <FaCheckCircle className="text-green-500 text-4xl" />;
+      case 'reliable':
+        return <FaCheckCircle className="text-green-500 text-4xl" />;
       case 'suspicious':
         return <FaExclamationTriangle className="text-yellow-500 text-4xl" />;
       default:
@@ -106,8 +108,13 @@ const PhoneChecker = () => {
         return 'border-orange-500 bg-orange-50';
       case 'safe':
         return 'border-green-500 bg-green-50';
+      case 'reliable':
+        return 'border-green-500 bg-green-50';
       case 'suspicious':
         return 'border-yellow-500 bg-yellow-50';
+      case 'truecaller':
+      case 'mobile':
+        return 'border-blue-500 bg-blue-50';
       default:
         return 'border-gray-500 bg-gray-50';
     }
@@ -123,8 +130,14 @@ const PhoneChecker = () => {
         return '⚠️ SPAM DÉTECTÉ';
       case 'safe':
         return '✅ NUMÉRO SÉCURISÉ';
+      case 'reliable':
+        return '✅ NUMÉRO FIABLE';
       case 'suspicious':
         return '⚠️ NUMÉRO SUSPECT';
+      case 'truecaller':
+        return '';
+      case 'mobile':
+        return '';
       default:
         return '❓ NON VÉRIFIÉ';
     }
@@ -225,36 +238,108 @@ const PhoneChecker = () => {
                   result.type === 'scam' ? 'text-red-600' :
                   result.type === 'spam' ? 'text-orange-600' :
                   result.type === 'safe' ? 'text-green-600' :
-                  result.type === 'suspicious' ? 'text-yellow-600' : 'text-gray-600'
+                  result.type === 'reliable' ? 'text-green-600' :
+                  result.type === 'suspicious' ? 'text-yellow-600' :
+                  result.type === 'truecaller' || result.type === 'mobile' ? 'text-blue-600' : 'text-gray-600'
                 }`}>
                   {getResultText()}
                 </h3>
                 
-                {result.riskInfo && (
+                {/* Affichage du numéro de téléphone avec emoji approprié */}
+                <p className="text-xl text-blue-600 mt-2 font-mono font-bold">
+                  {result.type === 'mobile' || result.type === 'truecaller' ? '📱' : '☎️'} {phoneNumber}
+                </p>
+                
+                {/* Affichage du niveau de risque seulement si pertinent */}
+                {result.riskInfo && result.riskLevel !== 'none' && (
                   <div className={`mt-2 inline-flex items-center px-3 py-1 rounded-full text-sm font-medium border ${getRiskLevelColor(result.riskLevel)}`}>
                     {result.riskInfo.icon} {result.riskInfo.label}
                   </div>
                 )}
+                
+                {/* Affichage spécial pour les numéros fiables */}
+                {result.riskInfo && result.riskLevel === 'none' && (
+                  <div className="mt-2 inline-flex items-center px-3 py-1 rounded-full text-sm font-medium border border-green-200 text-green-600 bg-green-100">
+                    ✅ Numéro fiable
+                  </div>
+                )}
 
-                {/* Score de confiance */}
-                {result.confidence && (
+                {/* Score de confiance unifié */}
+                {result.source === 'TrueCaller' && (
+                  <div className="mt-3 inline-flex items-center px-3 py-1 rounded-full text-sm font-medium border border-blue-200 text-blue-600 bg-blue-100">
+                    <FaInfoCircle className="mr-2" />
+                    Confiance : {typeof result.confidence === 'number' ? result.confidence : 85}% ({getConfidenceLabel(typeof result.confidence === 'number' ? result.confidence : 85)})
+                  </div>
+                )}
+                
+
+                
+                {/* Score de confiance pour les autres sources */}
+                {result.confidence && result.source !== 'TrueCaller' && (
                   <div className={`mt-3 inline-flex items-center px-3 py-1 rounded-full text-sm font-medium border ${getConfidenceColor(result.confidence)}`}>
                     <FaInfoCircle className="mr-2" />
                     Confiance : {result.confidence}% ({getConfidenceLabel(result.confidence)})
                   </div>
                 )}
+                
+                {/* Score de spam TrueCaller */}
+                {result.spamScore !== undefined && (
+                  <div className={`mt-3 inline-flex items-center px-3 py-1 rounded-full text-sm font-medium border ${
+                    result.spamScore >= 80 ? 'text-red-600 bg-red-100 border-red-200' :
+                    result.spamScore >= 50 ? 'text-orange-600 bg-orange-100 border-orange-200' :
+                    'text-green-600 bg-green-100 border-green-200'
+                  }`}>
+                    <FaExclamationTriangle className="mr-2" />
+                    Score Spam : {result.spamScore}% ({result.spamScore >= 80 ? 'Élevé' : result.spamScore >= 50 ? 'Moyen' : 'Faible'})
+                  </div>
+                )}
               </div>
               
               <div className="space-y-4">
-                <div className="flex justify-between items-center p-4 bg-gray-50 rounded-lg">
-                  <span className="font-medium text-gray-700">Signalements :</span>
-                  <span className="font-bold text-lg">{result.reports || 0}</span>
+                {/* Informations de base */}
+                <div className="grid grid-cols-2 gap-4 mb-4">
+                  <div className="flex justify-between items-center p-4 bg-gray-50 rounded-lg">
+                    <span className="font-medium text-gray-700">Signalements :</span>
+                    <span className="font-bold text-2xl text-blue-600 text-right">{result.reports || 0}</span>
+                  </div>
+                  
+                  {result.spamScore !== undefined && (
+                    <div className="flex justify-between items-center p-4 bg-gray-50 rounded-lg">
+                      <span className="font-medium text-gray-700">Risque :</span>
+                      <span className={`font-bold text-2xl text-right ${
+                        result.spamScore >= 80 ? 'text-red-600' :
+                        result.spamScore >= 50 ? 'text-orange-600' :
+                        'text-green-600'
+                      }`}>
+                        {result.spamScore}%
+                      </span>
+                    </div>
+                  )}
                 </div>
                 
-                {result.lastReport && (
+                {/* Message spécial si aucun signalement */}
+                {(!result.reports || result.reports === 0) && (
+                  <div className="p-4 bg-green-50 rounded-lg border border-green-200">
+                    <div className="flex items-center text-green-700">
+                      <FaCheckCircle className="mr-2" />
+                      <span className="font-medium">Aucun signalement - Numéro considéré comme fiable</span>
+                    </div>
+                  </div>
+                )}
+                
+                {/* Dernier signalement seulement s'il y en a */}
+                {result.lastReport && result.reports > 0 && (
                   <div className="flex justify-between items-center p-4 bg-gray-50 rounded-lg">
                     <span className="font-medium text-gray-700">Dernier signalement :</span>
-                    <span className="text-gray-600">{result.lastReport}</span>
+                    <span className="text-gray-600">
+                      {new Date(result.lastReport).toLocaleDateString('fr-FR', {
+                        day: '2-digit',
+                        month: '2-digit',
+                        year: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit'
+                      })}
+                    </span>
                   </div>
                 )}
                 
@@ -269,6 +354,39 @@ const PhoneChecker = () => {
                   <div className="flex justify-between items-center p-4 bg-gray-50 rounded-lg">
                     <span className="font-medium text-gray-700">Source :</span>
                     <span className="text-gray-600">{result.source}</span>
+                  </div>
+                )}
+                
+                {/* Informations TrueCaller */}
+                {result.name && (
+                  <div className="flex justify-between items-center p-4 bg-blue-50 rounded-lg border border-blue-200">
+                    <span className="font-medium text-blue-700">Nom :</span>
+                    <span className="text-blue-600 font-medium">{result.name}</span>
+                  </div>
+                )}
+                
+                {/* Type de ligne (fixe/mobile) */}
+                <div className="flex justify-between items-center p-4 bg-blue-50 rounded-lg border border-blue-200">
+                  <span className="font-medium text-blue-700">Type de ligne :</span>
+                  <span className="text-blue-600 font-medium">
+                    {result.type === 'mobile' ? '📱 Mobile' : 
+                     result.type === 'landline' ? '☎️ Fixe' : 
+                     result.type === 'truecaller' ? '📱 Mobile' :
+                     'Inconnu'}
+                  </span>
+                </div>
+                
+                {/* Pourcentage de problème */}
+                {result.spamScore !== undefined && (
+                  <div className="flex justify-between items-center p-4 bg-blue-50 rounded-lg border border-blue-200">
+                    <span className="font-medium text-blue-700">Problème :</span>
+                    <span className={`font-medium ${
+                      result.spamScore >= 80 ? 'text-red-600' :
+                      result.spamScore >= 50 ? 'text-orange-600' :
+                      'text-green-600'
+                    }`}>
+                      {result.spamScore}%
+                    </span>
                   </div>
                 )}
                 

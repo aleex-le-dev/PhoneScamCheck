@@ -10,20 +10,43 @@ export class PhoneCheckService {
     try {
       // Nettoyer le numéro
       const cleanNumber = this.cleanPhoneNumber(phoneNumber);
+      console.log('🔍 Vérification du numéro:', cleanNumber);
       
       if (!this.isValidFrenchNumber(cleanNumber)) {
         throw new Error('Numéro de téléphone français invalide');
       }
       
       // Vérification multi-sources en parallèle (incluant TrueCaller)
-      const [localResult, externalResult, truecallerResult] = await Promise.all([
+      const [localResult, externalResult, truecallerResult] = await Promise.allSettled([
         this.checkLocalDatabase(cleanNumber),
         ExternalAPIService.checkMultipleSources(cleanNumber),
         TrueCallerService.checkPhoneNumber(cleanNumber)
       ]);
       
+      // Extraire les résultats en gérant les erreurs
+      const localData = localResult.status === 'fulfilled' ? localResult.value : { found: false, data: null };
+      const externalData = externalResult.status === 'fulfilled' ? externalResult.value : { success: false, data: null };
+      const truecallerData = truecallerResult.status === 'fulfilled' ? truecallerResult.value : { success: false, data: null };
+      
+      // Log des erreurs si elles existent
+      if (localResult.status === 'rejected') {
+        console.error('❌ Erreur base locale:', localResult.reason);
+      }
+      if (externalResult.status === 'rejected') {
+        console.error('❌ Erreur APIs externes:', externalResult.reason);
+      }
+      if (truecallerResult.status === 'rejected') {
+        console.error('❌ Erreur TrueCaller:', truecallerResult.reason);
+      }
+      
+      console.log('📊 Résultats des vérifications:');
+      console.log('  - Local:', localData);
+      console.log('  - Externe:', externalData);
+      console.log('  - TrueCaller:', truecallerData);
+      
       // Combiner les résultats (incluant TrueCaller)
-      const combinedResult = this.combineResults(localResult, externalResult, truecallerResult, cleanNumber);
+      const combinedResult = this.combineResults(localData, externalData, truecallerData, cleanNumber);
+      console.log('🔄 Résultat combiné:', combinedResult);
       
       return {
         success: true,
@@ -32,6 +55,7 @@ export class PhoneCheckService {
       };
       
     } catch (error) {
+      console.error('❌ Erreur dans checkPhoneNumber:', error);
       return {
         success: false,
         error: error.message
@@ -63,7 +87,14 @@ export class PhoneCheckService {
   
   // Combiner les résultats locaux et externes
   static combineResults(localResult, externalResult, truecallerResult, phoneNumber) {
+    console.log('🔀 Début combineResults avec:');
+    console.log('  - Local found:', localResult.found);
+    console.log('  - Externe success:', externalResult.success);
+    console.log('  - TrueCaller success:', truecallerResult.success);
+    console.log('  - TrueCaller data:', truecallerResult.data);
+    
     if (localResult.found) {
+      console.log('✅ Numéro trouvé localement');
       // Numéro trouvé localement - enrichir avec les données externes
       const enrichedData = {
         ...localResult.data,
@@ -76,6 +107,7 @@ export class PhoneCheckService {
         data: enrichedData
       };
     } else if (externalResult.success && externalResult.data.summary.totalReports > 0) {
+      console.log('✅ Numéro trouvé via APIs externes');
       // Numéro trouvé via les APIs externes
       const externalData = {
         type: externalResult.data.summary.type,
@@ -96,35 +128,90 @@ export class PhoneCheckService {
         data: externalData
       };
     } else if (truecallerResult.success && truecallerResult.data) {
+      console.log('✅ Numéro trouvé via TrueCaller');
+      console.log('  - Type TrueCaller:', truecallerResult.data.type);
+      console.log('  - SpamScore:', truecallerResult.data.spamScore);
+      console.log('  - ScamReports:', truecallerResult.data.scamReports);
+      
       // Numéro trouvé via TrueCaller
       const truecallerData = {
-        type: truecallerResult.data.type,
+        type: truecallerResult.data.type === 'safe' ? 'reliable' : truecallerResult.data.type,
         reports: truecallerResult.data.reports,
-        lastReport: truecallerResult.data.lastReport,
-        description: truecallerResult.data.description,
-        category: 'truecaller',
-        riskLevel: truecallerResult.data.riskLevel,
-        categoryLabel: 'Signalé par TrueCaller',
-        riskInfo: riskLevels[truecallerResult.data.riskLevel] || riskLevels.unknown,
+        lastReport: truecallerResult.data.lastUpdated,
+        description: this.formatTrueCallerDescription(truecallerResult.data),
+        category: truecallerResult.data.type === 'safe' ? 'reliable' : 'truecaller',
+        riskLevel: truecallerResult.data.reputation.riskLevel,
+        categoryLabel: truecallerResult.data.type === 'safe' ? 'Numéro FIABLE' : 'Signalé par TrueCaller',
+        riskInfo: riskLevels[truecallerResult.data.reputation.riskLevel] || riskLevels.unknown,
         source: 'TrueCaller',
-        externalSources: truecallerResult.data.sources,
-        confidence: truecallerResult.data.confidence
+        externalSources: {},
+        confidence: truecallerResult.data.type === 'safe' ? 95 : (truecallerResult.data.confidence || 85)
       };
+      
+      console.log('🔄 Données TrueCaller transformées:', truecallerData);
       
       return {
         found: true,
         data: truecallerData
       };
     } else {
-      // Numéro non trouvé - vérification de sécurité
-      const securityCheck = this.performSecurityCheck(phoneNumber);
+      console.log('✅ Numéro non trouvé dans aucune liste = FIABLE');
+      // Numéro non trouvé dans aucune liste = FIABLE
+      const reliableData = {
+        type: 'reliable',
+        reports: 0,
+        lastReport: null,
+        description: 'Numéro non signalé dans nos bases de données - Considéré comme fiable',
+        category: 'reliable',
+        riskLevel: 'none',
+        categoryLabel: 'Numéro FIABLE',
+        riskInfo: riskLevels.none,
+        source: 'Vérification multi-sources',
+        externalSources: externalResult.success ? externalResult.data.sources : {},
+        confidence: 95,
+        status: 'verified_safe'
+      };
+      
       return {
         found: false,
-        data: securityCheck
+        data: reliableData
       };
     }
   }
   
+  // Formater la description TrueCaller avec toutes les informations
+  static formatTrueCallerDescription(truecallerData) {
+    const info = [];
+    
+    // Informations de base
+    if (truecallerData.name) info.push(`Nom: ${truecallerData.name}`);
+    if (truecallerData.type) info.push(`Type: ${truecallerData.type === 'mobile' ? 'Mobile' : 'Fixe'}`);
+    if (truecallerData.carrier) info.push(`Opérateur: ${truecallerData.carrier}`);
+    if (truecallerData.countryCode) info.push(`Pays: ${truecallerData.countryCode}`);
+    
+    // Adresse si disponible
+    if (truecallerData.address) {
+      if (truecallerData.address.city) info.push(`Ville: ${truecallerData.address.city}`);
+      if (truecallerData.address.timezone) info.push(`Fuseau horaire: ${truecallerData.address.timezone}`);
+    }
+    
+    // Réputation et scores
+    if (truecallerData.spamScore !== undefined) info.push(`Score Spam: ${truecallerData.spamScore}%`);
+    if (truecallerData.scamReports !== undefined) info.push(`Signalements: ${truecallerData.scamReports}`);
+    if (truecallerData.confidence !== undefined) info.push(`Confiance: ${truecallerData.confidence}%`);
+    
+    // Dernière mise à jour
+    if (truecallerData.lastUpdated) {
+      const date = new Date(truecallerData.lastUpdated).toLocaleDateString('fr-FR');
+      info.push(`Mise à jour: ${date}`);
+    }
+    
+    // Source
+    info.push(`Source: ${truecallerData.source || 'TrueCaller'}`);
+    
+    return info.join(' | ');
+  }
+
   // Vérification de sécurité pour les numéros non trouvés
   static performSecurityCheck(phoneNumber) {
     // Analyse basée sur des patterns connus

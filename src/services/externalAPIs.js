@@ -11,12 +11,7 @@ export class ExternalAPIService {
       free: true
     },
     
-    // OpenCNAM - Base de données communautaire
-    opencnam: {
-      baseUrl: 'https://api.opencnam.com/v3/phone',
-      apiKey: import.meta.env.VITE_OPENCNAM_KEY || '',
-      free: true
-    },
+
     
     // Base de données communautaire française
     scamalert: {
@@ -69,32 +64,7 @@ export class ExternalAPIService {
     }
   }
 
-  // Vérifier via OpenCNAM (base communautaire)
-  static async checkWithOpenCNAM(phoneNumber) {
-    try {
-      const cleanNumber = this.cleanPhoneNumber(phoneNumber);
-      const url = `${this.API_CONFIG.opencnam.baseUrl}/${cleanNumber}`;
-      
-      const response = await fetch(url);
-      const data = await response.json();
-      
-      return {
-        success: true,
-        data: {
-          name: data.name,
-          number: data.number,
-          updated: data.updated,
-          uri: data.uri
-        }
-      };
-    } catch (error) {
-      console.error('Erreur OpenCNAM:', error);
-      return {
-        success: false,
-        error: 'Erreur de vérification'
-      };
-    }
-  }
+
 
   // Vérifier via base de données communautaire française
   static async checkWithScamAlert(phoneNumber) {
@@ -171,22 +141,31 @@ export class ExternalAPIService {
     try {
       const cleanNumber = this.cleanPhoneNumber(phoneNumber);
       
-      // Vérifications parallèles
-      const [numverifyResult, opencnamResult, scamalertResult] = await Promise.allSettled([
+      // Vérifications parallèles (sans OpenCNAM)
+      const promises = [
         this.checkWithNumVerify(cleanNumber),
-        this.checkWithOpenCNAM(cleanNumber),
         this.checkWithScamAlert(cleanNumber)
-      ]);
+      ];
+      
+      const apiResults = await Promise.allSettled(promises);
+      
+      // Extraire les résultats
+      const numverifyResult = apiResults[0];
+      const scamalertResult = apiResults[1];
+      
+      // Log des résultats de chaque source
+      console.log('📊 Résultats des vérifications externes:');
+      console.log('  - NumVerify:', numverifyResult.status === 'fulfilled' ? '✅' : '❌', numverifyResult.status === 'fulfilled' ? numverifyResult.value.success : 'Erreur');
+      console.log('  - ScamAlert:', scamalertResult.status === 'fulfilled' ? '✅' : '❌', scamalertResult.status === 'fulfilled' ? scamalertResult.value.success : 'Erreur');
       
       // Analyser les résultats
       const results = {
         phoneNumber: cleanNumber,
         sources: {
           numverify: numverifyResult.status === 'fulfilled' ? numverifyResult.value : null,
-          opencnam: opencnamResult.status === 'fulfilled' ? opencnamResult.value : null,
           scamalert: scamalertResult.status === 'fulfilled' ? scamalertResult.value : null
         },
-        summary: this.analyzeResults(cleanNumber, numverifyResult, opencnamResult, scamalertResult)
+        summary: this.analyzeResults(cleanNumber, numverifyResult, scamalertResult)
       };
       
       return {
@@ -204,7 +183,7 @@ export class ExternalAPIService {
   }
 
   // Analyser les résultats de toutes les sources
-  static analyzeResults(phoneNumber, numverifyResult, opencnamResult, scamalertResult) {
+  static analyzeResults(phoneNumber, numverifyResult, scamalertResult) {
     let riskScore = 0;
     let riskLevel = 'none';
     let type = 'unknown';
@@ -235,11 +214,7 @@ export class ExternalAPIService {
       // NumVerify ne donne pas d'info sur le spam, juste la validité
     }
     
-    // Analyser OpenCNAM
-    if (opencnamResult.status === 'fulfilled' && opencnamResult.value.success) {
-      sources.push('OpenCNAM');
-      // OpenCNAM peut donner des indices sur la réputation
-    }
+
     
     // Calculer le niveau de risque final
     if (riskScore >= 100) riskLevel = 'high';
@@ -290,13 +265,7 @@ export class ExternalAPIService {
           dailyLimit: 100,
           used: Math.floor(Math.random() * 50)
         },
-        opencnam: {
-          name: 'OpenCNAM',
-          status: 'active',
-          free: true,
-          dailyLimit: 1000,
-          used: Math.floor(Math.random() * 200)
-        },
+
         scamalert: {
           name: 'ScamAlert.fr',
           status: 'active',

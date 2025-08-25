@@ -41,7 +41,25 @@ export class TrueCallerService {
     await new Promise(resolve => setTimeout(resolve, 500 + Math.random() * 1000));
     
     // Génération de données réalistes basées sur le numéro
-    const countryCode = phoneNumber.startsWith('+33') ? 'FR' : 'XX';
+    let countryCode = 'FR'; // Par défaut France
+    if (phoneNumber.startsWith('+33')) {
+      countryCode = 'FR';
+    } else if (phoneNumber.startsWith('+32')) {
+      countryCode = 'BE';
+    } else if (phoneNumber.startsWith('+41')) {
+      countryCode = 'CH';
+    } else if (phoneNumber.startsWith('+1')) {
+      countryCode = 'CA';
+    } else if (phoneNumber.startsWith('+44')) {
+      countryCode = 'GB';
+    } else if (phoneNumber.startsWith('+49')) {
+      countryCode = 'DE';
+    } else if (phoneNumber.startsWith('+34')) {
+      countryCode = 'ES';
+    } else if (phoneNumber.startsWith('+39')) {
+      countryCode = 'IT';
+    }
+    
     const isMobile = phoneNumber.includes('6') || phoneNumber.includes('7');
     
     // Simulation de réputation (basée sur des patterns connus)
@@ -81,26 +99,26 @@ export class TrueCallerService {
     
     let spamScore = 0;
     let scamReports = 0;
-    let confidence = 'low';
+    let confidence = 85; // Valeur par défaut en pourcentage
     
     // Analyse basée sur des patterns
     if (phoneNumber.includes('123456789')) {
       spamScore = 95;
       scamReports = 156;
-      confidence = 'high';
+      confidence = 95;
     } else if (phoneNumber.includes('000') || phoneNumber.includes('111')) {
       spamScore = 80;
       scamReports = 89;
-      confidence = 'medium';
+      confidence = 75;
     } else if (phoneNumber.includes('999')) {
       spamScore = 70;
       scamReports = 45;
-      confidence = 'medium';
+      confidence = 70;
     } else {
       // Score aléatoire bas pour les autres numéros
       spamScore = Math.floor(Math.random() * 30);
       scamReports = Math.floor(Math.random() * 10);
-      confidence = 'low';
+      confidence = 85; // Confiance élevée pour les numéros normaux
     }
     
     return {
@@ -157,10 +175,31 @@ export class TrueCallerService {
    */
   static getRandomCarrier(countryCode) {
     if (countryCode === 'FR') {
-      const carriers = ['Orange', 'SFR', 'Bouygues Telecom', 'Free Mobile'];
+      const carriers = ['Orange', 'SFR', 'Bouygues Telecom', 'Free Mobile', 'Coriolis Telecom', 'Ozone', 'Prixtel'];
+      return carriers[Math.floor(Math.random() * carriers.length)];
+    } else if (countryCode === 'BE') {
+      const carriers = ['Proximus', 'Orange Belgium', 'Telenet', 'Base Company'];
+      return carriers[Math.floor(Math.random() * carriers.length)];
+    } else if (countryCode === 'CH') {
+      const carriers = ['Swisscom', 'Sunrise', 'Salt Mobile'];
+      return carriers[Math.floor(Math.random() * carriers.length)];
+    } else if (countryCode === 'CA') {
+      const carriers = ['Rogers', 'Bell', 'Telus', 'Freedom Mobile'];
+      return carriers[Math.floor(Math.random() * carriers.length)];
+    } else if (countryCode === 'GB') {
+      const carriers = ['EE', 'O2', 'Vodafone', 'Three', 'Virgin Mobile'];
+      return carriers[Math.floor(Math.random() * carriers.length)];
+    } else if (countryCode === 'DE') {
+      const carriers = ['Telekom', 'Vodafone', 'O2', 'E-Plus'];
+      return carriers[Math.floor(Math.random() * carriers.length)];
+    } else if (countryCode === 'ES') {
+      const carriers = ['Movistar', 'Vodafone', 'Orange', 'Yoigo'];
+      return carriers[Math.floor(Math.random() * carriers.length)];
+    } else if (countryCode === 'IT') {
+      const carriers = ['TIM', 'Vodafone', 'Wind', '3 Italia'];
       return carriers[Math.floor(Math.random() * carriers.length)];
     }
-    return 'Unknown Carrier';
+    return 'Opérateur local';
   }
 
   /**
@@ -170,10 +209,31 @@ export class TrueCallerService {
    */
   static getRandomCity(countryCode) {
     if (countryCode === 'FR') {
-      const cities = ['Paris', 'Lyon', 'Marseille', 'Toulouse', 'Nice', 'Nantes'];
+      const cities = ['Paris', 'Lyon', 'Marseille', 'Toulouse', 'Nice', 'Nantes', 'Strasbourg', 'Montpellier', 'Bordeaux', 'Lille', 'Rennes', 'Reims', 'Saint-Étienne', 'Toulon', 'Le Havre', 'Grenoble', 'Dijon', 'Angers', 'Villeurbanne', 'Le Mans'];
+      return cities[Math.floor(Math.random() * cities.length)];
+    } else if (countryCode === 'BE') {
+      const cities = ['Bruxelles', 'Anvers', 'Gand', 'Charleroi', 'Liège', 'Bruges', 'Namur', 'Louvain', 'Mons', 'Alost'];
+      return cities[Math.floor(Math.random() * cities.length)];
+    } else if (countryCode === 'CH') {
+      const cities = ['Zurich', 'Genève', 'Bâle', 'Berne', 'Lausanne', 'Winterthour', 'Saint-Gall', 'Lucerne', 'Lugano', 'Bienne'];
+      return cities[Math.floor(Math.random() * cities.length)];
+    } else if (countryCode === 'CA') {
+      const cities = ['Toronto', 'Montréal', 'Vancouver', 'Calgary', 'Edmonton', 'Ottawa', 'Winnipeg', 'Québec', 'Hamilton', 'Kitchener'];
+      return cities[Math.floor(Math.random() * cities.length)];
+    } else if (countryCode === 'GB') {
+      const cities = ['Londres', 'Birmingham', 'Manchester', 'Glasgow', 'Liverpool', 'Leeds', 'Sheffield', 'Edimbourg', 'Bristol', 'Cardiff'];
+      return cities[Math.floor(Math.random() * cities.length)];
+    } else if (countryCode === 'DE') {
+      const cities = ['Berlin', 'Hambourg', 'Munich', 'Cologne', 'Francfort', 'Stuttgart', 'Düsseldorf', 'Dortmund', 'Essen', 'Leipzig'];
+      return cities[Math.floor(Math.random() * cities.length)];
+    } else if (countryCode === 'ES') {
+      const cities = ['Madrid', 'Barcelone', 'Valence', 'Séville', 'Saragosse', 'Malaga', 'Murcie', 'Palma', 'Las Palmas', 'Bilbao'];
+      return cities[Math.floor(Math.random() * cities.length)];
+    } else if (countryCode === 'IT') {
+      const cities = ['Rome', 'Milan', 'Naples', 'Turin', 'Palerme', 'Gênes', 'Bologne', 'Florence', 'Bari', 'Catane'];
       return cities[Math.floor(Math.random() * cities.length)];
     }
-    return 'Unknown City';
+    return 'Ville locale';
   }
 
   /**

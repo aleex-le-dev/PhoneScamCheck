@@ -157,6 +157,7 @@ export const riskLevels = {
   'low': { label: 'Faible', color: 'yellow', icon: '⚠️' },
   'medium': { label: 'Moyen', color: 'orange', icon: '⚠️' },
   'high': { label: 'Élevé', color: 'red', icon: '🚨' }
+
 };
 
 // Statistiques réelles
